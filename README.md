@@ -1,1 +1,1 @@
-Disco_Diffusion_Resurrection/disco_168661034.png
+![Texto alternativo](assets/disco_168661034.png)
