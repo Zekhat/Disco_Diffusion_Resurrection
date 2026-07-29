@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DISCO·DIFUSIÓN — Panel de Control Real</title>
+<style>
+@font-face{font-family:'Syne';font-style:normal;font-weight:700;font-display:swap;src:url('https://cdn.jsdelivr.net/fontsource/fonts/syne@latest/latin-700-normal.woff2') format('woff2')}
+@font-face{font-family:'Syne';font-style:normal;font-weight:800;font-display:swap;src:url('https://cdn.jsdelivr.net/fontsource/fonts/syne@latest/latin-800-normal.woff2') format('woff2')}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:400;font-display:swap;src:url('https://cdn.jsdelivr.net/fontsource/fonts/space-grotesk@latest/latin-400-normal.woff2') format('woff2')}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500;font-display:swap;src:url('https://cdn.jsdelivr.net/fontsource/fonts/space-grotesk@latest/latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:700;font-display:swap;src:url('https://cdn.jsdelivr.net/fontsource/fonts/space-grotesk@latest/latin-700-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-400-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:600;font-display:swap;src:url('https://cdn.jsdelivr.net/fontsource/fonts/ibm-plex-mono@latest/latin-600-normal.woff2') format('woff2')}
+
+:root{
+  --bg0:#0a1013; --bg1:#0e161b; --panel:#131d23; --panel2:#18242b; --panel3:#1d2a32;
+  --line:#26363f; --line2:#334852; --ink:#e9f1f2; --mut:#8ba6ae; --mut2:#5f7880;
+  --amber:#ffb454; --amber-d:#d98a26; --coral:#ff6d5a; --teal:#4fd8c0; --lilac:#b7a6ff;
+  --ok:#4fd8c0; --busy:#ffb454; --err:#ff6d5a;
+  --mono:'IBM Plex Mono',ui-monospace,monospace; --body:'Space Grotesk',system-ui,sans-serif; --disp:'Syne',var(--body);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg0);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh;font-size:14px;line-height:1.5}
+.bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(circle at center, rgba(120,160,170,.07) 1px, transparent 1.4px);background-size:26px 26px;-webkit-mask-image:radial-gradient(120% 90% at 50% 0%, #000 30%, transparent 90%);mask-image:radial-gradient(120% 90% at 50% 0%, #000 30%, transparent 90%)}
+.bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-glow::before,.bg-glow::after{content:"";position:absolute;width:60vw;height:60vw;border-radius:50%;filter:blur(80px);opacity:.15}
+.bg-glow::before{left:-12vw;top:-18vw;background:radial-gradient(circle,var(--teal),transparent 65%);animation:drift1 26s ease-in-out infinite alternate}
+.bg-glow::after{right:-14vw;bottom:-22vw;background:radial-gradient(circle,var(--amber),transparent 65%);animation:drift2 32s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(8vw,6vh) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-7vw,-5vh) scale(1.1)}}
+#grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;width:100%;height:100%;image-rendering:pixelated;mix-blend-mode:overlay}
+.app{position:relative;z-index:2;max-width:1480px;margin:0 auto;padding:0 22px 80px}
+
+header.top{display:flex;align-items:center;gap:18px;padding:20px 0 16px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+#noiseTile{width:30px;height:30px;border:1px solid var(--line2);image-rendering:pixelated;flex:none;box-shadow:0 0 0 3px rgba(79,216,192,.06)}
+.brand h1{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:.5px;margin:0;line-height:1;white-space:nowrap}
+.brand h1 .dot{color:var(--amber)}
+.brand .tag{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--mut);text-transform:uppercase;margin-top:3px}
+.top .spacer{flex:1}
+.leds{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;flex-wrap:wrap}
+.led{display:inline-flex;align-items:center;gap:6px}
+.led i{width:8px;height:8px;border-radius:50%;background:var(--mut2);display:inline-block;transition:.3s}
+.led.ok i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.led.err i{background:var(--err);box-shadow:0 0 8px var(--err)}
+.led.busy i{background:var(--busy);box-shadow:0 0 8px var(--busy);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#clock{font-family:var(--mono);font-size:11px;color:var(--lilac);letter-spacing:1px}
+.gh{display:flex;gap:8px;flex-wrap:wrap}
+.gh a{font-family:var(--mono);font-size:10.5px;color:var(--mut);text-decoration:none;border:1px solid var(--line);padding:6px 9px;letter-spacing:.5px;transition:.18s;white-space:nowrap}
+.gh a:hover{color:var(--ink);border-color:var(--amber);background:rgba(255,180,84,.06)}
+.gh a b{color:var(--teal);font-weight:600}
+
+nav.tabs{display:flex;gap:4px;margin:18px 0 18px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab{appearance:none;background:none;border:none;color:var(--mut);font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;padding:11px 16px 13px;cursor:pointer;position:relative;transition:.18s;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--ink)}
+.tab.active::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:var(--amber);box-shadow:0 0 12px var(--amber)}
+.tab .badge{font-family:var(--mono);font-size:9px;background:var(--panel3);color:var(--mut);padding:1px 5px;margin-left:7px;border:1px solid var(--line)}
+.tab.active .badge{color:var(--amber);border-color:var(--amber-d)}
+.pane{display:none;animation:fade .4s ease}
+.pane.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.studio{display:grid;grid-template-columns:minmax(0,1fr) 392px;gap:20px;align-items:start}
+@media(max-width:1080px){.studio{grid-template-columns:1fr}}
+
+.viewport{position:relative;background:#05080a;border:1px solid var(--line2);overflow:hidden;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.viewport::before{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);opacity:.35;mix-blend-mode:multiply}
+.stage{position:relative;width:100%;aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;background:#05080a;z-index:1}
+#genImg{max-width:100%;max-height:100%;object-fit:contain;display:none;opacity:0;transition:opacity .6s}
+#genImg.show{display:block;opacity:1}
+.empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--mut2);transition:opacity .4s}
+.empty-state.hide{opacity:0;pointer-events:none}
+.empty-state .glyph{font-size:44px;color:var(--line2);animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.empty-state .k{font-family:var(--disp);font-weight:800;font-size:15px;letter-spacing:4px;color:var(--mut)}
+.empty-state .h{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
+.empty-state .h b{color:var(--teal)}
+.corner{position:absolute;width:18px;height:18px;border:2px solid var(--amber);z-index:4;opacity:.7}
+.corner.tl{top:8px;left:8px;border-right:none;border-bottom:none}
+.corner.tr{top:8px;right:8px;border-left:none;border-bottom:none}
+.corner.bl{bottom:8px;left:8px;border-right:none;border-top:none}
+.corner.br{bottom:8px;right:8px;border-left:none;border-top:none}
+.hud{position:absolute;inset:0;z-index:4;pointer-events:none;padding:14px 16px;display:flex;flex-direction:column;justify-content:space-between;font-family:var(--mono)}
+.hud .row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.hud .meta{font-size:10px;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase}
+.hud .meta b{display:block;font-size:17px;color:var(--ink);font-weight:600;letter-spacing:.5px;margin-top:2px;text-shadow:0 2px 14px #000}
+.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.chip-mini{font-size:9.5px;letter-spacing:.5px;color:var(--teal);border:1px solid rgba(79,216,192,.35);padding:2px 6px;background:rgba(8,20,22,.6)}
+.hud .right{text-align:right}
+.hud .time{font-size:10px;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase}
+.hud .time b{display:block;font-size:17px;color:var(--amber);font-weight:600}
+.hud .ticker{font-size:10.5px;color:var(--mut);letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(90deg,transparent,rgba(8,14,17,.85) 8%,rgba(8,14,17,.85) 92%,transparent);padding:5px 8px}
+.hud .ticker em{color:var(--amber);font-style:normal}
+#loadOv{position:absolute;inset:0;z-index:5;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(5,8,10,.72);backdrop-filter:blur(2px)}
+#loadOv.on{display:flex}
+.ring{width:52px;height:52px;border-radius:50%;border:3px solid var(--panel3);border-top-color:var(--amber);border-right-color:var(--teal);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loadOv .st{font-family:var(--mono);font-size:12px;color:var(--ink);letter-spacing:1px}
+#loadOv .el{font-family:var(--mono);font-size:22px;color:var(--amber);font-weight:600}
+#loadOv .hint{font-family:var(--mono);font-size:9.5px;color:var(--mut2);letter-spacing:1px;text-transform:uppercase}
+.scanbar{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--teal),transparent);z-index:6;opacity:0;top:0}
+#loadOv.on ~ .scanbar{opacity:.8;animation:scan 2.2s linear infinite}
+@keyframes scan{0%{top:0}100%{top:100%}}
+
+.transport{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+.btn{appearance:none;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);font-family:var(--disp);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:12px;padding:11px 16px;cursor:pointer;transition:.16s;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn:hover{border-color:var(--amber);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn.primary{background:linear-gradient(180deg,var(--amber),var(--amber-d));color:#1a1206;border-color:var(--amber-d);box-shadow:0 6px 22px -8px var(--amber)}
+.btn.primary:hover{box-shadow:0 10px 28px -8px var(--amber)}
+.btn.teal{background:linear-gradient(180deg,var(--teal),#2fae98);color:#04211b;border-color:#2fae98;box-shadow:0 6px 22px -8px var(--teal)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;border-color:var(--line)}
+.btn .ic{font-size:13px}
+.seed-box{display:flex;align-items:center;border:1px solid var(--line2);background:var(--panel)}
+.seed-box label{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;color:var(--mut);padding:0 8px;text-transform:uppercase;border-right:1px solid var(--line)}
+.seed-box input{width:118px;background:transparent;border:none;color:var(--amber);font-family:var(--mono);font-size:13px;padding:9px 8px;outline:none}
+.dice{appearance:none;border:none;border-left:1px solid var(--line);background:var(--panel2);color:var(--mut);width:38px;height:38px;cursor:pointer;font-size:15px;transition:.2s}
+.dice:hover{color:var(--amber)}
+.dice.spin{animation:spin .5s}
+.cd-note{font-family:var(--mono);font-size:9.5px;color:var(--mut2);letter-spacing:.5px}
+
+.drawer{margin-top:18px;border:1px solid var(--line);background:var(--panel)}
+.drawer .dh{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.drawer .dh .ttl{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase}
+.drawer .dh .ttl b{color:var(--teal)}
+.dtabs{display:flex;gap:2px;margin-left:6px}
+.dtab{appearance:none;background:transparent;border:1px solid transparent;color:var(--mut);font-family:var(--mono);font-size:10.5px;letter-spacing:.5px;padding:4px 9px;cursor:pointer;text-transform:uppercase}
+.dtab.active{color:var(--ink);border-color:var(--line2);background:var(--panel2)}
+.drawer .dh .right{margin-left:auto;display:flex;gap:8px}
+.cbtn{appearance:none;border:1px solid var(--line2);background:var(--panel2);color:var(--mut);font-family:var(--mono);font-size:10px;letter-spacing:.5px;padding:5px 9px;cursor:pointer;text-transform:uppercase;transition:.15s}
+.cbtn:hover{color:var(--ink);border-color:var(--amber)}
+pre.code{margin:0;padding:14px 16px;max-height:300px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.65;color:#cfe0e3;white-space:pre;tab-size:2}
+pre.code .k{color:var(--teal)} pre.code .s{color:var(--amber)} pre.code .n{color:var(--lilac)} pre.code .c{color:var(--mut2);font-style:italic}
+pre.code::-webkit-scrollbar{width:9px;height:9px}
+pre.code::-webkit-scrollbar-thumb{background:var(--line2)}
+
+.rail{display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 150px);overflow:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.rail::-webkit-scrollbar{width:8px}.rail::-webkit-scrollbar-thumb{background:var(--line2)}
+.acc{border:1px solid var(--line);background:var(--panel)}
+.acc .ah{display:flex;align-items:center;gap:9px;padding:11px 13px;cursor:pointer;user-select:none}
+.acc .ah .dotc{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber);flex:none}
+.acc .ah h3{margin:0;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink);font-weight:600}
+.acc .ah .chev{margin-left:auto;color:var(--mut);transition:.25s;font-size:11px}
+.acc.closed .chev{transform:rotate(-90deg)}
+.acc .ab{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s ease}
+.acc.closed .ab{grid-template-rows:0fr}
+.acc .ab > div{overflow:hidden}
+.acc .inner{padding:4px 13px 15px;display:flex;flex-direction:column;gap:13px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field > label,.lab{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--mut);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.field .val{color:var(--amber);font-weight:600}
+textarea,input[type=text],input[type=number],select{background:var(--bg1);border:1px solid var(--line2);color:var(--ink);font-family:var(--body);font-size:13px;padding:9px 10px;outline:none;width:100%;transition:.15s}
+textarea{resize:vertical;min-height:64px;font-family:var(--mono);font-size:12.5px;line-height:1.5}
+input[type=number]{font-family:var(--mono)}
+textarea:focus,input:focus,select:focus{border-color:var(--amber);box-shadow:0 0 0 2px rgba(255,180,84,.12)}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 16px) 16px,calc(100% - 11px) 16px;background-size:5px 5px,5px 5px;background-repeat:no-repeat;cursor:pointer}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.chips-row{display:flex;flex-wrap:wrap;gap:6px}
+.schip{appearance:none;border:1px solid var(--line2);background:var(--panel2);color:var(--mut);font-family:var(--mono);font-size:10.5px;letter-spacing:.3px;padding:5px 9px;cursor:pointer;transition:.15s}
+.schip:hover{color:var(--ink);border-color:var(--mut)}
+.schip.on{color:#1a1206;background:var(--amber);border-color:var(--amber-d)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--panel3);border:1px solid var(--line);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--amber);border:2px solid var(--bg0);box-shadow:0 0 10px var(--amber);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--amber);border:2px solid var(--bg0);cursor:pointer}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0}
+.tog .nm{font-family:var(--mono);font-size:11px;color:var(--ink);letter-spacing:.3px}
+.switch{position:relative;width:38px;height:20px;flex:none}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch .sl{position:absolute;inset:0;background:var(--panel3);border:1px solid var(--line2);cursor:pointer;transition:.2s}
+.switch .sl::before{content:"";position:absolute;width:12px;height:12px;left:3px;top:3px;background:var(--mut);transition:.2s}
+.switch input:checked + .sl{background:rgba(79,216,192,.18);border-color:var(--teal)}
+.switch input:checked + .sl::before{transform:translateX(18px);background:var(--teal);box-shadow:0 0 8px var(--teal)}
+.clip-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+.seg{display:flex;border:1px solid var(--line2);background:var(--bg1)}
+.seg button{flex:1;appearance:none;border:none;background:transparent;color:var(--mut);font-family:var(--mono);font-size:11px;letter-spacing:.5px;padding:7px;cursor:pointer;text-transform:uppercase;transition:.15s}
+.seg button.on{background:var(--panel3);color:var(--amber)}
+.mini-steps{margin:0;padding-left:16px;font-size:12px;color:var(--mut);display:flex;flex-direction:column;gap:5px}
+.mini-steps b{color:var(--ink)}
+.mini-steps code{font-family:var(--mono);color:var(--amber);font-size:11px}
+.note{font-family:var(--mono);font-size:10px;color:var(--mut2);letter-spacing:.3px;line-height:1.6}
+.note b{color:var(--teal)}
+
+.anim-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:980px){.anim-grid{grid-template-columns:1fr}}
+.panel{border:1px solid var(--line);background:var(--panel);padding:16px}
+.panel h2{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;color:var(--ink);display:flex;align-items:center;gap:9px}
+.panel h2::before{content:"";width:8px;height:8px;background:var(--lilac);box-shadow:0 0 8px var(--lilac)}
+.kf{border:1px solid var(--line);background:var(--bg1);padding:10px;margin-bottom:9px;position:relative}
+.kf .kh{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.kf .kh label{font-family:var(--mono);font-size:9.5px;color:var(--mut);letter-spacing:1px}
+.kf .kh input[type=number]{width:74px}
+.kf .del{margin-left:auto;appearance:none;border:1px solid var(--line);background:transparent;color:var(--mut2);width:24px;height:24px;cursor:pointer}
+.kf .del:hover{color:var(--coral);border-color:var(--coral)}
+.kf textarea{min-height:42px}
+.kf .wt{display:flex;align-items:center;gap:8px;margin-top:8px}
+.kf .wt label{font-family:var(--mono);font-size:9px;color:var(--mut);letter-spacing:1px;white-space:nowrap}
+.ser-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#curveCanvas{display:block;width:100%;background:#070d10;border:1px solid var(--line2)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:9px;font-family:var(--mono);font-size:10px;color:var(--mut)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:14px;height:3px;display:inline-block}
+
+.guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.guide-grid{grid-template-columns:1fr}}
+.gcard{border:1px solid var(--line);background:var(--panel);padding:20px}
+.gcard .gh2{font-family:var(--disp);font-weight:800;font-size:16px;letter-spacing:.5px;margin:0 0 4px}
+.gcard .gh2 .opt{color:var(--amber)}
+.gcard .sub{font-family:var(--mono);font-size:11px;color:var(--mut);margin-bottom:14px;letter-spacing:.3px}
+.gcard .sub a{color:var(--teal);text-decoration:none}
+.honest{border:1px solid rgba(255,109,90,.35);background:rgba(255,109,90,.05);padding:16px 18px;margin-bottom:20px}
+.honest h2{font-family:var(--disp);font-weight:800;font-size:14px;letter-spacing:1px;margin:0 0 8px;color:var(--coral)}
+.honest p{margin:0 0 6px;font-size:12.5px;color:var(--mut)}
+.honest p b{color:var(--ink)}
+.req{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.req span{font-family:var(--mono);font-size:10px;letter-spacing:.5px;border:1px solid var(--line2);color:var(--mut);padding:4px 8px}
+.req span b{color:var(--teal)}
+.step{display:flex;gap:12px;margin-bottom:14px}
+.step .num{font-family:var(--disp);font-weight:800;font-size:18px;color:var(--amber-d);flex:none;width:24px;text-align:right;line-height:1.2}
+.step .body{flex:1;min-width:0}
+.step .body p{margin:0 0 7px;font-size:13px;color:var(--ink)}
+.step .body p.mut{color:var(--mut);font-size:12px}
+.cblock{position:relative;border:1px solid var(--line);background:#070d10;padding:10px 40px 10px 12px;font-family:var(--mono);font-size:11.5px;color:#cfe0e3;white-space:pre-wrap;word-break:break-all;line-height:1.6}
+.cblock .cp{position:absolute;top:8px;right:8px;appearance:none;border:1px solid var(--line2);background:var(--panel2);color:var(--mut);font-family:var(--mono);font-size:9px;letter-spacing:.5px;padding:3px 7px;cursor:pointer;text-transform:uppercase}
+.cblock .cp:hover{color:var(--amber);border-color:var(--amber)}
+.faq{margin-top:22px;border:1px solid var(--line);background:var(--panel);padding:18px 20px}
+.faq h2{font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase;margin:0 0 12px;color:var(--coral)}
+.faq p{margin:0 0 8px;font-size:12.5px;color:var(--mut)}
+.faq p b{color:var(--ink)}
+.faq code{font-family:var(--mono);color:var(--amber);font-size:11.5px}
+
+.gal-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.drop{flex:1;min-width:220px;border:1px dashed var(--line2);background:var(--bg1);padding:14px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.5px;transition:.18s;cursor:pointer}
+.drop.over{border-color:var(--amber);color:var(--amber);background:rgba(255,180,84,.05)}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.gitem{position:relative;aspect-ratio:4/3;border:1px solid var(--line);overflow:hidden;background:#05080a;cursor:pointer;animation:fade .4s both}
+.gitem img{width:100%;height:100%;object-fit:cover;display:block;transition:.4s}
+.gitem:hover img{transform:scale(1.06)}
+.gitem .ov{position:absolute;inset:0;background:linear-gradient(0deg,rgba(5,8,10,.92),transparent 55%);opacity:0;transition:.2s;display:flex;flex-direction:column;justify-content:flex-end;padding:10px;gap:8px}
+.gitem:hover .ov{opacity:1}
+.gitem .meta{font-family:var(--mono);font-size:9.5px;color:var(--mut);line-height:1.4;letter-spacing:.3px}
+.gitem .meta em{color:var(--amber);font-style:normal;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gitem .acts{display:flex;gap:6px}
+.gitem .acts button{appearance:none;border:1px solid var(--line2);background:rgba(19,29,35,.85);color:var(--ink);width:30px;height:30px;cursor:pointer;font-size:13px;transition:.15s}
+.gitem .acts button:hover{border-color:var(--amber);color:var(--amber)}
+.gitem .acts button.del:hover{border-color:var(--coral);color:var(--coral)}
+.gitem .src{position:absolute;top:8px;left:8px;font-family:var(--mono);font-size:8.5px;letter-spacing:1px;color:var(--teal);background:rgba(5,8,10,.7);padding:2px 6px;border:1px solid rgba(79,216,192,.3);text-transform:uppercase}
+.empty{border:1px dashed var(--line2);padding:50px;text-align:center;color:var(--mut2);font-family:var(--mono);font-size:12px;letter-spacing:1px}
+
+.lb{position:fixed;inset:0;z-index:50;background:rgba(4,7,9,.92);display:none;align-items:center;justify-content:center;padding:30px;flex-direction:column;gap:14px}
+.lb.open{display:flex;animation:fade .25s}
+.lb img{max-width:90vw;max-height:78vh;border:1px solid var(--line2);box-shadow:0 30px 80px -20px #000}
+.lb .cap{font-family:var(--mono);font-size:11px;color:var(--mut);text-align:center;max-width:80vw;letter-spacing:.3px}
+.lb .cap em{color:var(--amber);font-style:normal}
+.lb .x{position:absolute;top:18px;right:22px;appearance:none;border:1px solid var(--line2);background:var(--panel);color:var(--ink);width:38px;height:38px;cursor:pointer;font-size:18px}
+.lb .dl{appearance:none;border:1px solid var(--amber-d);background:var(--amber);color:#1a1206;font-family:var(--disp);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:11px;padding:9px 16px;cursor:pointer}
+.toasts{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;flex-direction:column;gap:9px;align-items:flex-end}
+.toast{background:var(--panel2);border:1px solid var(--line2);border-left:3px solid var(--teal);padding:11px 15px;font-family:var(--mono);font-size:11.5px;color:var(--ink);letter-spacing:.3px;box-shadow:0 12px 30px -10px #000;animation:tin .3s;max-width:340px}
+.toast.err{border-left-color:var(--coral)}
+.toast.warn{border-left-color:var(--amber)}
+@keyframes tin{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+.foot{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--mut2);letter-spacing:.5px;text-align:center;line-height:1.8}
+.foot b{color:var(--mut)}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease, transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<canvas id="grain" width="160" height="90"></canvas>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <canvas id="noiseTile" width="26" height="26"></canvas>
+      <div>
+        <h1>DISCO<span class="dot">·</span>DIFUSIÓN</h1>
+        <div class="tag">panel real · sin instalación</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="leds">
+      <span class="led" id="ledEng"><i></i><span id="engTxt">comprobando motor…</span></span>
+      <span class="led ok"><i></i>Colab · GPU gratis</span>
+      <span id="clock">--:--:--</span>
+    </div>
+    <div class="gh">
+      <a href="https://colab.research.google.com/github/alembics/disco-diffusion/blob/main/Disco_Diffusion.ipynb" target="_blank" rel="noopener"><b>▶</b> Colab oficial</a>
+      <a href="https://github.com/alembics/disco-diffusion" target="_blank" rel="noopener"><b>alembics</b>/disco-diffusion</a>
+      <a href="https://github.com/MohamadZeina/Disco_Diffusion_Local" target="_blank" rel="noopener"><b>MohamadZeina</b>/Local</a>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="estudio">Estudio</button>
+    <button class="tab" data-tab="anim">Animación</button>
+    <button class="tab" data-tab="guia">Guía</button>
+    <button class="tab" data-tab="gal">Galería <span class="badge" id="galBadge">0</span></button>
+  </nav>
+
+  <!-- ============ ESTUDIO ============ -->
+  <section class="pane active" id="pane-estudio">
+    <div class="studio">
+      <div>
+        <div class="viewport">
+          <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          <div class="stage">
+            <img id="genImg" alt="imagen generada">
+            <div class="empty-state" id="emptyState">
+              <div class="glyph">⌁</div>
+              <div class="k">LISTO PARA DIFUNDIR</div>
+              <div class="h">imagen <b>real</b> vía flux/turbo · cero instalación</div>
+            </div>
+            <div id="loadOv">
+              <div class="ring"></div>
+              <div class="st" id="loadSt">enviando prompt al motor…</div>
+              <div class="el" id="loadEl">0.0 s</div>
+              <div class="hint">api pública gratuita · 1 imagen / 15 s</div>
+            </div>
+            <div class="scanbar"></div>
+          </div>
+          <div class="hud">
+            <div class="row">
+              <div class="meta">última imagen<b id="hudSeed">—</b>
+                <div class="chips"><span class="chip-mini" id="hudModel">flux</span><span class="chip-mini" id="hudRes">1280×768</span><span class="chip-mini">pollinations.ai</span></div>
+              </div>
+              <div class="right"><div class="time">tiempo<b id="hudTime">—</b></div></div>
+            </div>
+            <div class="ticker" id="hudTicker"><em>prompt ›</em> escribe algo y pulsa generar…</div>
+          </div>
+        </div>
+
+        <div class="transport">
+          <button class="btn primary" id="btnGen"><span class="ic">⚡</span> Generar imagen real</button>
+          <button class="btn ghost" id="btnSave" disabled><span class="ic">💾</span> Guardar</button>
+          <button class="btn ghost" id="btnDl" disabled><span class="ic">⬇</span> PNG</button>
+          <div class="seed-box">
+            <label>semilla</label>
+            <input type="text" id="seedIn" value="-1" inputmode="numeric" />
+            <button class="dice" id="dice" title="Semilla aleatoria">🎲</button>
+          </div>
+          <span class="cd-note" id="cdNote">Ctrl+Enter también genera</span>
+        </div>
+
+        <div class="drawer">
+          <div class="dh">
+            <span class="ttl">salida · <b>dict listo para el notebook de Disco</b></span>
+            <div class="dtabs">
+              <button class="dtab active" data-cmd="dict">dict python</button>
+              <button class="dtab" data-cmd="cli">cli</button>
+              <button class="dtab" data-cmd="json">json</button>
+            </div>
+            <div class="right">
+              <button class="cbtn" id="copyCmd">copiar</button>
+              <button class="cbtn" id="dlJson">.json</button>
+              <button class="cbtn" id="openColab" style="color:var(--teal);border-color:var(--teal)">🚀 abrir colab</button>
+            </div>
+          </div>
+          <pre class="code" id="cmdOut"></pre>
+        </div>
+      </div>
+
+      <div class="rail" id="rail">
+        <div class="acc reveal">
+          <div class="ah"><span class="dotc"></span><h3>Prompt &amp; lienzo</h3><span class="chev">▾</span></div>
+          <div class="ab"><div><div class="inner">
+            <div class="field"><label>text_prompts</label>
+              <textarea id="prompt" spellcheck="false">Un faro flotante sobre un mar de nubes al atardecer, pintura al óleo onírica, luz volumétrica ámbar y turquesa, detalle intrincado --w 1</textarea></div>
+            <div class="field"><span class="lab">estilos (añaden al prompt)</span>
+              <div class="chips-row" id="styleChips">
+                <button class="schip" data-s="acuarela etérea">acuarela</button>
+                <button class="schip" data-s="óleo clásico">óleo</button>
+                <button class="schip" data-s="ciberpunk neón">ciberpunk</button>
+                <button class="schip" data-s="arte conceptual">conceptual</button>
+                <button class="schip" data-s="synthwave retro">synthwave</button>
+                <button class="schip" data-s="barroco dorado">barroco</button>
+                <button class="schip" data-s="surrealismo onírico">onírico</button>
+              </div></div>
+            <div class="field"><span class="lab">resolución</span>
+              <select id="resPreset">
+                <option value="512,512">512 × 512 · retrato</option>
+                <option value="768,512">768 × 512 · paisaje</option>
+                <option value="1024,576">1024 × 576 · cine</option>
+                <option value="1280,768" selected>1280 × 768 · estándar</option>
+                <option value="1536,1024">1536 × 1024 · alta</option>
+                <option value="custom">personalizada…</option>
+              </select></div>
+            <div class="row2">
+              <div class="field"><label>ancho</label><input type="number" id="wIn" value="1280" step="64" min="64" max="2048"></div>
+              <div class="field"><label>alto</label><input type="number" id="hIn" value="768" step="64" min="64" max="2048"></div>
+            </div>
+          </div></div></div>
+        </div>
+
+        <div class="acc reveal">
+          <div class="ah"><span class="dotc" style="background:var(--teal);box-shadow:0 0 8px var(--teal)"></span><h3>Motor instantáneo</h3><span class="chev">▾</span></div>
+          <div class="ab"><div><div class="inner">
+            <div class="field"><span class="lab">modelo (pollinations.ai)</span>
+              <div class="seg" id="engineSeg"><button class="on" data-v="flux">flux · calidad</button><button data-v="turbo">turbo · rápido</button></div></div>
+            <div class="tog"><span class="nm">enhance (reescritura IA del prompt)</span>
+              <label class="switch"><input type="checkbox" id="enhance"><span class="sl"></span></label></div>
+            <p class="note">API pública y gratuita de difusión (FLUX / SDXL-Turbo). La imagen se genera en servidores remotos y llega a tu navegador: <b>nada se instala</b>. Límite anónimo: 1 petición cada 15 s.</p>
+          </div></div></div>
+        </div>
+
+        <div class="acc reveal">
+          <div class="ah"><span class="dotc" style="background:var(--coral);box-shadow:0 0 8px var(--coral)"></span><h3>Disco Diffusion real</h3><span class="chev">▾</span></div>
+          <div class="ab"><div><div class="inner">
+            <p class="note">Disco Diffusion (CLIP + diffusion guiada) necesita GPU y PyTorch, así que se ejecuta en <b>Google Colab con GPU gratuita</b> — cero instalación en tu PC. Tu configuración de esta página ya está convertida en el dict de la pestaña de salida.</p>
+            <a class="btn teal" style="justify-content:center" href="https://colab.research.google.com/github/alembics/disco-diffusion/blob/main/Disco_Diffusion.ipynb" target="_blank" rel="noopener"><span class="ic">🚀</span> Colab oficial v5.7</a>
+            <a class="btn ghost" style="justify-content:center" href="https://colab.research.google.com/github/rodrigo-barraza/pristine-disco-diffusion/blob/master/rodrigos-pristine-disco-diffusion.ipynb" target="_blank" rel="noopener"><span class="ic">⚡</span> Pristine DD v5.61</a>
+            <ol class="mini-steps">
+              <li>Abre el notebook (botón de arriba) y conecta un <b>entorno de ejecución T4</b>.</li>
+              <li>Copia el <code>dict python</code> de la pestaña de salida y pégalo en la celda <code>settings = {…}</code>.</li>
+              <li><b>Runtime ▸ Ejecutar todo</b>. Los modelos se descargan solos y el resultado aparece en <code>/content/images_out</code>.</li>
+            </ol>
+          </div></div></div>
+        </div>
+
+        <div class="acc closed reveal">
+          <div class="ah"><span class="dotc" style="background:var(--lilac);box-shadow:0 0 8px var(--lilac)"></span><h3>Modelo &amp; CLIP (Disco)</h3><span class="chev">▾</span></div>
+          <div class="ab"><div><div class="inner">
+            <div class="field"><label>diffusion_model</label>
+              <select id="model">
+                <option>512x512_diffusion_uncond</option>
+                <option>256x256_diffusion_uncond</option>
+                <option>portrait_generator_v001</option>
+                <option>watercolordiffusion_2</option>
+                <option>PulpSciFiSpace_Diffusion_B</option>
+              </select></div>
+            <div class="field"><span class="lab">diffusion_sampling_mode</span>
+              <div class="seg" id="sampler"><button class="on" data-v="ddim">ddim</button><button data-v="plms">plms</button></div></div>
+            <div class="tog"><span class="nm">use_secondary_model</span>
+              <label class="switch"><input type="checkbox" id="secModel"><span class="sl"></span></label></div>
+            <div class="field"><span class="lab">modelos CLIP activos</span>
+              <div class="clip-grid">
+                <div class="tog"><span class="nm">ViT-B/32</span><label class="switch"><input type="checkbox" id="clip_ViTB32" checked><span class="sl"></span></label></div>
+                <div class="tog"><span class="nm">ViT-B/16</span><label class="switch"><input type="checkbox" id="clip_ViTB16" checked><span class="sl"></span></label></div>
+                <div class="tog"><span class="nm">RN50</span><label class="switch"><input type="checkbox" id="clip_RN50" checked><span class="sl"></span></label></div>
+                <div class="tog"><span class="nm">RN50x4</span><label class="switch"><input type="checkbox" id="clip_RN50x4"><span class="sl"></span></label></div>
+                <div class="tog"><span class="nm">RN50x16</span><label class="switch"><input type="checkbox" id="clip_RN50x16"><span class="sl"></span></label></div>
+                <div class="tog"><span class="nm">RN50x64</span><label class="switch"><input type="checkbox" id="clip_RN50x64"><span class="sl"></span></label></div>
+                <div class="tog"><span class="nm">ViT-L/14</span><label class="switch"><input type="checkbox" id="clip_ViTL14"><span class="sl"></span></label></div>
+                <div class="tog"><span class="nm">ViT-L/14@336</span><label class="switch"><input type="checkbox" id="clip_ViTL14_336"><span class="sl"></span></label></div>
+              </div></div>
+          </div></div></div>
+        </div>
+
+        <div class="acc closed reveal">
+          <div class="ah"><span class="dotc" style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></span><h3>Muestreo (Disco)</h3><span class="chev">▾</span></div>
+          <div class="ab"><div><div class="inner">
+            <div class="field"><span class="lab">steps <span class="val" id="v_steps">250</span></span><input type="range" id="steps" min="50" max="500" step="10" value="250"></div>
+            <div class="field"><span class="lab">clip_guidance_scale <span class="val" id="v_cgs">8000</span></span><input type="range" id="cgs" min="1000" max="30000" step="500" value="8000"></div>
+            <div class="field"><span class="lab">cutn <span class="val" id="v_cutn">16</span></span><input type="range" id="cutn" min="4" max="64" step="2" value="16"></div>
+            <div class="field"><span class="lab">cut_pow <span class="val" id="v_cutpow">1.0</span></span><input type="range" id="cutpow" min="0.5" max="3" step="0.1" value="1"></div>
+            <div class="field"><span class="lab">skip_steps (%) <span class="val" id="v_skip">10</span></span><input type="range" id="skip" min="0" max="50" step="1" value="10"></div>
+            <div class="row2">
+              <div class="field"><span class="lab">tv_scale <span class="val" id="v_tv">0</span></span><input type="range" id="tv" min="0" max="300" step="5" value="0"></div>
+              <div class="field"><span class="lab">range_scale <span class="val" id="v_range">150</span></span><input type="range" id="range" min="0" max="300" step="5" value="150"></div>
+            </div>
+            <div class="field"><span class="lab">sat_scale <span class="val" id="v_sat">0</span></span><input type="range" id="sat" min="0" max="300" step="5" value="0"></div>
+            <div class="field"><span class="lab">init_scale <span class="val" id="v_initscale">1000</span></span><input type="range" id="initscale" min="0" max="5000" step="50" value="1000"></div>
+            <div class="tog"><span class="nm">perlin_init</span><label class="switch"><input type="checkbox" id="perlin"><span class="sl"></span></label></div>
+          </div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ANIMACIÓN ============ -->
+  <section class="pane" id="pane-anim">
+    <div class="anim-grid">
+      <div>
+        <div class="panel reveal">
+          <h2>Keyframes &amp; movimiento</h2>
+          <div class="row2" style="margin-bottom:13px">
+            <div class="field"><label>animation_mode</label>
+              <select id="animMode"><option>2D</option><option>3D</option><option>Interpolación</option><option>Video Input</option></select></div>
+            <div class="row2">
+              <div class="field"><label>max_frames</label><input type="number" id="maxFrames" value="300" min="1" max="2000"></div>
+              <div class="field"><label>fps</label><input type="number" id="fps" value="12" min="1" max="60"></div>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:6px"><span class="lab">key_frames · text_prompts</span></div>
+          <div id="kfList"></div>
+          <button class="btn ghost" id="addKf" style="width:100%;justify-content:center;margin-bottom:14px"><span class="ic">＋</span> Añadir keyframe</button>
+          <div class="field" style="margin-bottom:6px"><span class="lab">series de movimiento (formato <em style="color:var(--amber);font-style:normal">0:(valor)</em>)</span></div>
+          <div class="ser-grid">
+            <div class="field"><label>angle</label><input type="text" id="s_angle" value="0:(0),150:(8),300:(0)"></div>
+            <div class="field"><label>zoom</label><input type="text" id="s_zoom" value="0:(1.04)"></div>
+            <div class="field"><label>translation_x</label><input type="text" id="s_tx" value="0:(0),150:(6),300:(0)"></div>
+            <div class="field"><label>translation_y</label><input type="text" id="s_ty" value="0:(0)"></div>
+            <div class="field"><label>translation_z (3D)</label><input type="text" id="s_tz" value="0:(0)"></div>
+            <div class="field"><label>rotation_3d_x</label><input type="text" id="s_rx" value="0:(0)"></div>
+          </div>
+          <div class="row2" style="margin-top:13px">
+            <div class="field"><span class="lab">interp_spline</span>
+              <select id="spline"><option>Linear</option><option>Log</option></select></div>
+            <div class="tog" style="align-self:end"><span class="nm">use_midas (3D)</span><label class="switch"><input type="checkbox" id="midas" checked><span class="sl"></span></label></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel reveal">
+          <h2>Curvas reales de cámara</h2>
+          <canvas id="curveCanvas" width="640" height="260"></canvas>
+          <div class="legend">
+            <span><i style="background:var(--amber)"></i>zoom</span>
+            <span><i style="background:var(--teal)"></i>angle</span>
+            <span><i style="background:var(--coral)"></i>translation_x</span>
+            <span><i style="background:var(--lilac)"></i>translation_y</span>
+            <span style="color:var(--mut2)">┆ = keyframes de prompt</span>
+          </div>
+          <p class="note" style="margin:12px 0">Estas curvas se calculan con la <b>misma interpolación</b> que usa Disco Diffusion (parseo de series + spline). Lo que ves aquí es exactamente el movimiento que ejecutará el notebook.</p>
+          <a class="btn teal" style="justify-content:center;width:100%" href="https://colab.research.google.com/github/alembics/disco-diffusion/blob/main/Disco_Diffusion.ipynb" target="_blank" rel="noopener"><span class="ic">🚀</span> Animar en Colab (animation_mode 2D/3D)</a>
+          <div class="field" style="margin-top:14px"><span class="lab">salida · settings de animación</span></div>
+          <pre class="code" id="animOut" style="max-height:220px"></pre>
+          <div style="display:flex;gap:8px;margin-top:10px"><button class="cbtn" id="copyAnim">copiar dict</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GUÍA ============ -->
+  <section class="pane" id="pane-guia">
+    <div class="honest reveal">
+      <h2>⚠ Transparencia total: dónde ocurre cada cosa</h2>
+      <p><b>El navegador no puede ejecutar los modelos de Disco Diffusion</b> (PyTorch + CLIP, varios GB, requieren CUDA). Cualquier página que te enseñe una "difusión" dibujada en canvas te está enseñando una imitación.</p>
+      <p>Este panel hace dos cosas <b>reales</b> y las etiqueta como tales: <b>1)</b> generación instantánea con modelos de difusión de verdad (FLUX / SDXL-Turbo) vía la API pública gratuita de <b>Pollinations.ai</b>; y <b>2)</b> lanzamiento de <b>Disco Diffusion auténtico</b> en la GPU gratuita de Google Colab, con tu configuración ya convertida en el <b>dict</b> exacto que espera el notebook.</p>
+    </div>
+    <div class="guide-grid">
+      <div class="gcard reveal">
+        <h2 class="gh2"><span class="opt">RUTA 1</span> · Disco Diffusion real en Colab</h2>
+        <div class="sub">recomendada · GPU gratis · 0 instalaciones · <a href="https://github.com/alembics/disco-diffusion" target="_blank" rel="noopener">alembics/disco-diffusion</a></div>
+        <div class="req"><span><b>Cuenta de Google</b> (nada más)</span><span>T4 gratuita</span><span>v5.7 + MiDaS 3D</span></div>
+        <div class="step"><div class="num">1</div><div class="body">
+          <p>Abre el notebook oficial directamente en Colab:</p>
+          <div class="cblock">https://colab.research.google.com/github/alembics/disco-diffusion/blob/main/Disco_Diffusion.ipynb<button class="cp">copiar</button></div></div></div>
+        <div class="step"><div class="num">2</div><div class="body">
+          <p>En <b>Runtime ▸ Cambiar tipo</b> elige GPU (T4). Ejecuta las celdas de instalación: descargan diffusion + CLIP automáticamente.</p></div></div>
+        <div class="step"><div class="num">3</div><div class="body">
+          <p>En la pestaña <b>Estudio</b> de este panel, copia el bloque <b style="color:var(--amber)">dict python</b> y pégalo sustituyendo la celda <code style="color:var(--amber)">settings = {…}</code> del notebook. Ahí van tu prompt, pasos, cortes, CLIPs y semilla.</p></div></div>
+        <div class="step"><div class="num">4</div><div class="body">
+          <p><b>Runtime ▸ Ejecutar todo</b>. El progreso se ve celda a celda y las imágenes aparecen en <code style="color:var(--amber)">/content/images_out/&lt;batch&gt;</code>. Para animación, define keyframes en la pestaña <b style="color:var(--amber)">Animación</b> y pega su dict igual.</p></div></div>
+      </div>
+
+      <div class="gcard reveal">
+        <h2 class="gh2"><span class="opt">RUTA 2</span> · Local (si algún día quieres)</h2>
+        <div class="sub">opcional · tu propia GPU · <a href="https://github.com/MohamadZeina/Disco_Diffusion_Local" target="_blank" rel="noopener">MohamadZeina/Disco_Diffusion_Local</a></div>
+        <div class="req"><span><b>≥8 GB</b> VRAM</span><span>Win 10+ / Linux</span><span>NVIDIA + WSL2</span></div>
+        <div class="step"><div class="num">1</div><div class="body">
+          <p>WSL2 + Anaconda + entorno PyTorch 1.10 / CUDA 11.1:</p>
+          <div class="cblock">wsl --install
+conda create -n pytorch_110
+conda activate pytorch_110
+conda install pytorch==1.10 torchvision torchaudio cudatoolkit==11.1 -c pytorch -c conda-forge
+conda install jupyter pandas requests matplotlib opencv -c conda-forge<button class="cp">copiar</button></div></div></div>
+        <div class="step"><div class="num">2</div><div class="body">
+          <p>Clona y abre el notebook Turbo con animación 3D:</p>
+          <div class="cblock">git clone https://github.com/MohamadZeina/Disco_Diffusion_Local.git
+cd Disco_Diffusion_Local && jupyter notebook
+# Disco_Diffusion_v5_Turbo_[w_3D_animation]_local.ipynb<button class="cp">copiar</button></div>
+          <p class="mut">El mismo <b style="color:var(--amber)">dict</b> de este panel se pega aquí igual: los parámetros son idénticos.</p></div></div>
+        <div class="step"><div class="num">3</div><div class="body">
+          <p>Modo lote (varias ejecuciones seguidas):</p>
+          <div class="cblock">jupyter nbconvert --execute --to notebook --inplace Disco_Diffusion_v5_2_w_VR_Mode_batch_mode.ipynb<button class="cp">copiar</button></div></div></div>
+      </div>
+    </div>
+
+    <div class="faq reveal">
+      <h2>⚠ Errores CUDA / VRAM en local</h2>
+      <p>Si ves <code>RuntimeError: CUDA error: unknown error</code>, casi siempre es falta de VRAM. Prueba, en orden:</p>
+      <p>· Deja <b>un solo modelo CLIP</b> activo y usa <b>use_secondary_model</b>. · Cambia a <code>256x256_diffusion_uncond</code>. · Baja la resolución (ej. <code>128×128</code>) para confirmar, y súbela poco a poco hasta el límite de tu GPU. · En Colab este problema no existe con la T4 si mantienes ≤ 1280×768.</p>
+    </div>
+  </section>
+
+  <!-- ============ GALERÍA ============ -->
+  <section class="pane" id="pane-gal">
+    <div class="gal-bar">
+      <button class="btn primary" id="uploadBtn"><span class="ic">⬆</span> Subir imágenes</button>
+      <input type="file" id="uploadFile" accept="image/*" multiple style="display:none">
+      <div class="drop" id="drop">arrastra aquí tus renders (.png / .jpg) · se guardan en esta sesión</div>
+    </div>
+    <div class="gal-grid" id="galGrid"></div>
+  </section>
+
+  <div class="foot">Panel no oficial de Disco Diffusion · la generación instantánea usa la <b>API pública de Pollinations.ai</b> (FLUX/Turbo reales) · Disco Diffusion auténtico se ejecuta en <b>Google Colab / tu GPU</b> · <b>nada se instala en tu equipo</b>.</div>
+</div>
+
+<div class="lb" id="lb">
+  <button class="x" id="lbX">×</button>
+  <img id="lbImg" alt="">
+  <div class="cap" id="lbCap"></div>
+  <button class="dl" id="lbDl">descargar imagen</button>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const pad=(n,l=3)=>String(n).padStart(l,'0');
+const COLAB_URL='https://colab.research.google.com/github/alembics/disco-diffusion/blob/main/Disco_Diffusion.ipynb';
+function toast(msg,type=''){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(20px)';t.style.transition='.3s';setTimeout(()=>t.remove(),300)},3000)}
+async function copyText(txt){try{await navigator.clipboard.writeText(txt);toast('Copiado al portapapeles')}catch(e){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('Copiado')}catch(_){toast('No se pudo copiar','err')}ta.remove()}}
+
+const state={
+  prompt:'', w:1280, h:768, engine:'flux', enhance:false,
+  model:'512x512_diffusion_uncond', sampler:'ddim', secModel:false,
+  clips:{ViTB32:true,ViTB16:true,RN50:true,RN50x4:false,RN50x16:false,RN50x64:false,ViTL14:false,ViTL14_336:false},
+  steps:250, cgs:8000, cutn:16, cutpow:1, skip:10, tv:0, range:150, sat:0,
+  seed:-1, initScale:1000, perlin:false, perlinMode:'mixed',
+  batchName:'disco_local', lastURL:null, lastSeed:null
+};
+const anim={mode:'2D',maxFrames:300,fps:12,spline:'Linear',midas:true,
+  series:{angle:'0:(0),150:(8),300:(0)',zoom:'0:(1.04)',tx:'0:(0),150:(6),300:(0)',ty:'0:(0)',tz:'0:(0)',rx:'0:(0)'},
+  kf:[{f:0,p:'Un faro flotante sobre un mar de nubes, óleo onírico',w:1},{f:150,p:'el faro se transforma en una torre de cristal luminoso',w:1}]};
+
+function readUI(){
+  state.prompt=$('#prompt').value.trim();
+  state.w=parseInt($('#wIn').value)||1280; state.h=parseInt($('#hIn').value)||768;
+  state.enhance=$('#enhance').checked;
+  state.model=$('#model').value; state.secModel=$('#secModel').checked;
+  ['ViTB32','ViTB16','RN50','RN50x4','RN50x16','RN50x64','ViTL14','ViTL14_336'].forEach(k=>state.clips[k]=$('#clip_'+k).checked);
+  state.steps=+$('#steps').value; state.cgs=+$('#cgs').value; state.cutn=+$('#cutn').value; state.cutpow=+$('#cutpow').value;
+  state.skip=+$('#skip').value; state.tv=+$('#tv').value; state.range=+$('#range').value; state.sat=+$('#sat').value;
+  state.initScale=+$('#initscale').value; state.perlin=$('#perlin').checked;
+  const sv=$('#seedIn').value.trim(); state.seed=(sv===''||sv==='-1')?-1:parseInt(sv)||-1;
+}
+function syncLabels(){
+  $('#v_steps').textContent=$('#steps').value; $('#v_cgs').textContent=$('#cgs').value; $('#v_cutn').textContent=$('#cutn').value;
+  $('#v_cutpow').textContent=(+$('#cutpow').value).toFixed(1); $('#v_skip').textContent=$('#skip').value;
+  $('#v_tv').textContent=$('#tv').value; $('#v_range').textContent=$('#range').value; $('#v_sat').textContent=$('#sat').value;
+  $('#v_initscale').textContent=$('#initscale').value;
+  $('#hudRes').textContent=state.w+'×'+state.h; $('#hudModel').textContent=state.engine;
+}
+function updateTicker(){const t=state.prompt||'escribe algo y pulsa generar…';$('#hudTicker').innerHTML='<em>prompt ›</em> '+t.replace(/</g,'&lt;')}
+
+/* ---------- command builders (dict real para Disco Diffusion) ---------- */
+function clipDict(){const m={ViTB32:'ViTB32',ViTB16:'ViTB16',RN50:'RN50',RN50x4:'RN50x4',RN50x16:'RN50x16',RN50x64:'RN50x64',ViTL14:'ViTL14',ViTL14_336:'ViTL14_336'};const o={};for(const k in m)o[m[k]]=state.clips[k];return o}
+function buildDict(){
+  const p=state.prompt||'un paisaje onírico';
+  const skipSteps=Math.round(state.steps*state.skip/100);
+  const cd=clipDict();
+  const lines=[
+    ['# Pega este bloque en la celda "settings" del notebook de Disco Diffusion','='],
+    ['batch_name','=','"'+state.batchName+'"'],
+    ['steps','=',''+state.steps],
+    ['width_height','=','['+state.w+', '+state.h+']'],
+    ['clip_guidance_scale','=',''+state.cgs],
+    ['tv_scale','=',''+state.tv],['range_scale','=',''+state.range],['sat_scale','=',''+state.sat],
+    ['cutn','=',''+state.cutn],['cut_pow','=',''+state.cutpow],
+    ['init_image','=','None'],['init_scale','=',''+state.initScale],['skip_steps','=',''+skipSteps],
+    ['perlin_init','=',''+state.perlin],['perlin_mode','=','"'+state.perlinMode+'"'],
+    ['seed','=',''+state.seed],
+    ['diffusion_model','=','"'+state.model+'"'],['use_secondary_model','=',''+state.secModel],
+    ['diffusion_sampling_mode','=','"'+state.sampler+'"']
+  ];
+  let s='settings = {\n';
+  lines.forEach(l=>{if(l[1]==='=')s+='    # '+l[0]+'\n';else s+='    "'+l[0]+'": '+l[2]+',\n'});
+  for(const k in cd)s+='    "'+k+'": '+cd[k]+',\n';
+  s+='    "text_prompts": {0: ["'+p.replace(/"/g,'\\"')+'"]},\n}\n';
+  return s;
+}
+function buildCLI(){
+  const p=(state.prompt||'un paisaje onírico').replace(/"/g,'\\"');
+  const skipSteps=Math.round(state.steps*state.skip/100);
+  const clips=Object.keys(state.clips).filter(k=>state.clips[k]).join(',');
+  return `# Formato orientativo (forks CLI). El flujo oficial es por notebook (Colab).
+python disco.py \\
+  --batch_name "${state.batchName}" \\
+  --prompts "${p}" \\
+  --steps ${state.steps} \\
+  --width ${state.w} --height ${state.h} \\
+  --guidance ${state.cgs} \\
+  --cutn ${state.cutn} --cut-pow ${state.cutpow} \\
+  --skip-steps ${skipSteps} \\
+  --tv-scale ${state.tv} --range-scale ${state.range} --sat-scale ${state.sat} \\
+  --seed ${state.seed} \\
+  --model ${state.model} \\
+  --sampler ${state.sampler} \\
+  --clip-models ${clips||'ViTB32'}${state.secModel?' \\':'  '}
+${state.secModel?'  --secondary-model':''}`;
+}
+function buildJSON(){readUI();return JSON.stringify({studio:state,animation:anim},null,2)}
+function buildAnimDict(){
+  const tp={};anim.kf.forEach(k=>{tp[k.f]='["'+(k.p||'').replace(/"/g,'\\"')+' --w '+k.w+']'});
+  const o={
+    animation_mode:'"'+anim.mode+'"', max_frames:anim.maxFrames, fps:anim.fps,
+    interp_spline:'"'+anim.spline+'"', use_midas_depth_estimator:anim.midas,
+    angle:'{'+anim.series.angle+'}', zoom:'{'+anim.series.zoom+'}',
+    translation_x:'{'+anim.series.tx+'}', translation_y:'{'+anim.series.ty+'}',
+    translation_z:'{'+anim.series.tz+'}', rotation_3d_x:'{'+anim.series.rx+'}',
+    text_prompts:JSON.stringify(tp).replace(/"(\d+)":/g,'$1:')
+  };
+  let s='# Pega esto en la celda de animación del notebook\n';
+  for(const k in o)s+=k+' = '+o[k]+'\n';
+  return s;
+}
+function highlight(code){
+  return code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/(#[^\n]*)/g,'<span class="c">$1</span>')
+    .replace(/("[^"]*")/g,'<span class="s">$1</span>')
+    .replace(/\b(\d+\.?\d*)\b/g,'<span class="n">$1</span>')
+    .replace(/\b(True|False|None|settings|animation_mode|max_frames|fps|interp_spline|use_midas_depth_estimator|angle|zoom|translation_x|translation_y|translation_z|rotation_3d_x|text_prompts)\b/g,'<span class="k">$1</span>');
+}
+let curCmd='dict';
+function renderCmd(){
+  const raw=curCmd==='dict'?buildDict():curCmd==='cli'?buildCLI():buildJSON();
+  $('#cmdOut').innerHTML=highlight(raw);
+  $('#animOut').innerHTML=highlight(buildAnimDict());
+}
+function curRaw(){return curCmd==='dict'?buildDict():curCmd==='cli'?buildCLI():buildJSON()}
+
+/* ---------- generación REAL (Pollinations: FLUX / SDXL-Turbo) ---------- */
+let generating=false, cooldownUntil=0, loadTimer=0, loadStart=0, genToken=0;
+function buildPollURL(seed){
+  const p=state.prompt||'dreamlike landscape';
+  const params=new URLSearchParams({width:state.w,height:state.h,seed:seed,model:state.engine,nologo:'true',referrer:'disco-difusion-panel'});
+  if(state.enhance)params.set('enhance','true');
+  return 'https://image.pollinations.ai/prompt/'+encodeURIComponent(p)+'?'+params.toString();
+}
+function loadMsg(sec){
+  if(sec<4)return 'enviando prompt al motor…';
+  if(sec<16)return 'el modelo está difundiendo…';
+  if(sec<40)return 'aún pintando · flux tarda en alta resolución…';
+  return 'casi · refinando detalles…';
+}
+function generate(){
+  readUI();
+  if(generating)return;
+  if(!state.prompt){toast('Escribe un prompt primero','warn');$('#prompt').focus();return}
+  const now=Date.now();
+  if(now<cooldownUntil){toast('Límite gratuito: 1 imagen cada 15 s · espera '+Math.ceil((cooldownUntil-now)/1000)+' s','warn');return}
+  const seed=state.seed===-1?Math.floor(Math.random()*2000000000):state.seed;
+  $('#seedIn').value=seed; state.seed=seed;
+  const url=buildPollURL(seed);
+  const token=++genToken;
+  generating=true; cooldownUntil=now+15000;
+  $('#btnGen').disabled=true; $('#btnGen').innerHTML='<span class="ic">◌</span> Generando…';
+  $('#loadOv').classList.add('on'); $('#emptyState').classList.add('hide');
+  loadStart=performance.now();
+  $('#loadEl').textContent='0.0 s'; $('#loadSt').textContent=loadMsg(0);
+  loadTimer=setInterval(()=>{const s=(performance.now()-loadStart)/1000;$('#loadEl').textContent=s.toFixed(1)+' s';$('#loadSt').textContent=loadMsg(s)},200);
+  const img=new Image();
+  img.crossOrigin='anonymous';
+  const done=ok=>{
+    if(token!==genToken)return;
+    clearInterval(loadTimer); generating=false;
+    $('#loadOv').classList.remove('on');
+    $('#btnGen').disabled=false; $('#btnGen').innerHTML='<span class="ic">⚡</span> Generar imagen real';
+    if(ok){
+      const el=((performance.now()-loadStart)/1000).toFixed(1);
+      const gi=$('#genImg'); gi.src=url; gi.classList.add('show');
+      state.lastURL=url; state.lastSeed=seed;
+      $('#hudSeed').textContent='semilla '+seed;
+      $('#hudModel').textContent=state.engine; $('#hudRes').textContent=state.w+'×'+state.h;
+      $('#hudTime').textContent=el+' s';
+      $('#btnSave').disabled=false; $('#btnDl').disabled=false;
+      renderCmd();
+      toast('Imagen real generada en '+el+' s (semilla '+seed+')');
+    }else{
+      toast('El motor no respondió · reintenta (a veces la API pública está saturada)','err');
+      if(!state.lastURL)$('#emptyState').classList.remove('hide');
+    }
+  };
+  img.onload=()=>done(true);
+  img.onerror=()=>done(false);
+  setTimeout(()=>{if(token===genToken&&generating)done(false)},120000);
+  img.src=url;
+}
+setInterval(()=>{
+  const now=Date.now();
+  if(now<cooldownUntil&&!generating){
+    $('#btnGen').disabled=true;
+    $('#btnGen').innerHTML='<span class="ic">◔</span> Espera '+Math.ceil((cooldownUntil-now)/1000)+' s';
+    $('#cdNote').textContent='límite anónimo: 1 / 15 s';
+  }else if(!generating){
+    $('#btnGen').disabled=false;
+    $('#btnGen').innerHTML='<span class="ic">⚡</span> Generar imagen real';
+    $('#cdNote').textContent='Ctrl+Enter también genera';
+  }
+},250);
+async function downloadURL(url,name){
+  try{const r=await fetch(url);if(!r.ok)throw 0;const b=await r.blob();const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),5000);toast('Descargando…')}
+  catch(e){window.open(url,'_blank');toast('Se abrió la imagen en otra pestaña','warn')}
+}
+
+/* ---------- bindings ---------- */
+function bindInputs(){
+  $('#rail').addEventListener('input',()=>{readUI();syncLabels();renderCmd()});
+  $('#rail').addEventListener('change',()=>{readUI();syncLabels();renderCmd()});
+  $('#prompt').addEventListener('input',()=>{readUI();updateTicker()});
+  $('#engineSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('#engineSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.engine=b.dataset.v;syncLabels()});
+  $('#sampler').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('#sampler button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.sampler=b.dataset.v;renderCmd()});
+  $('#resPreset').addEventListener('change',e=>{if(e.target.value!=='custom'){const[a,b]=e.target.value.split(',');$('#wIn').value=a;$('#hIn').value=b;readUI();syncLabels();renderCmd()}});
+  ['wIn','hIn'].forEach(id=>$('#'+id).addEventListener('input',()=>{$('#resPreset').value='custom';readUI();syncLabels();renderCmd()}));
+  $('#styleChips').addEventListener('click',e=>{const b=e.target.closest('.schip');if(!b)return;const s=b.dataset.s;const ta=$('#prompt');let v=ta.value;const re=new RegExp(',?\\s*'+s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');if(v.includes(s)){v=v.replace(re,'').replace(/,\s*,/g,',').replace(/^,|,$/,'').trim()}else{v=(v?v.replace(/--w\s*\d+$/,'').trim():'')+', '+s+' --w 1'}ta.value=v;b.classList.toggle('on',ta.value.includes(s));readUI();updateTicker()});
+  $$('.dtab').forEach(b=>b.addEventListener('click',()=>{$$('.dtab').forEach(x=>x.classList.remove('active'));b.classList.add('active');curCmd=b.dataset.cmd;renderCmd()}));
+  $('#copyCmd').addEventListener('click',()=>copyText(curRaw()));
+  $('#dlJson').addEventListener('click',()=>{const blob=new Blob([buildJSON()],{type:'application/json'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=state.batchName+'_settings.json';a.click();URL.revokeObjectURL(u);toast('Config .json descargada')});
+  $('#openColab').addEventListener('click',()=>{window.open(COLAB_URL,'_blank');toast('Abriendo Colab oficial · pega el dict en la celda settings')});
+  document.addEventListener('click',e=>{const cp=e.target.closest('.cblock .cp');if(cp){const txt=cp.parentElement.textContent.replace('copiar','').trim();copyText(txt)}});
+  $$('.acc .ah').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('closed')));
+  $('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(!b)return;switchTab(b.dataset.tab)});
+  $('#btnGen').addEventListener('click',generate);
+  $('#btnSave').addEventListener('click',()=>{
+    if(!state.lastURL)return;
+    gallery.unshift({img:state.lastURL,meta:{prompt:state.prompt,seed:state.lastSeed,model:state.engine,w:state.w,h:state.h,date:new Date().toLocaleString('es-ES'),src:state.engine}});
+    persistGallery();renderGallery();toast('Guardada en la galería');
+  });
+  $('#btnDl').addEventListener('click',()=>{if(state.lastURL)downloadURL(state.lastURL,'disco_'+state.lastSeed+'.png')});
+  $('#dice').addEventListener('click',()=>{const d=$('#dice');d.classList.remove('spin');void d.offsetWidth;d.classList.add('spin');const v=Math.floor(Math.random()*2000000000);$('#seedIn').value=v;state.seed=v;renderCmd()});
+  document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&curTab==='estudio'){e.preventDefault();generate()}
+    if(e.key==='Escape')$('#lb').classList.remove('open');
+  });
+}
+function switchTab(name){
+  $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));
+  $$('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));
+  curTab=name;
+  if(name==='anim')drawCurves();
+  setTimeout(()=>$$('.reveal').forEach(el=>{if(isVisible(el))el.classList.add('in')}),30);
+}
+let curTab='estudio';
+function isVisible(el){const r=el.getBoundingClientRect();return r.width>0&&r.height>0&&r.top<window.innerHeight&&r.bottom>0}
+
+/* ---------- curvas reales de animación ---------- */
+function parseSeries(str){const out=[];const re=/(-?\d+(?:\.\d+)?)\s*:\s*\(([^)]*)\)/g;let m;while((m=re.exec(str))!==null)out.push({f:parseFloat(m[1]),v:parseFloat(m[2])});if(!out.length)out.push({f:0,v:0});out.sort((a,b)=>a.f-b.f);return out}
+function valAt(series,frame){if(frame<=series[0].f)return series[0].v;if(frame>=series[series.length-1].f)return series[series.length-1].v;for(let i=0;i<series.length-1;i++){if(frame>=series[i].f&&frame<=series[i+1].f){const t=(frame-series[i].f)/((series[i+1].f-series[i].f)||1);if(anim.spline==='Log'&&series[i].v>0&&series[i+1].v>0)return Math.exp(Math.log(series[i].v)*(1-t)+Math.log(series[i+1].v)*t);return series[i].v+(series[i+1].v-series[i].v)*t}}return series[series.length-1].v}
+const aSeries={};function rebuildAnimSeries(){for(const k in anim.series)aSeries[k]=parseSeries(anim.series[k])}
+function drawCurves(){
+  const c=$('#curveCanvas'),ctx=c.getContext('2d'),W=c.width,H=c.height;
+  ctx.fillStyle='#070d10';ctx.fillRect(0,0,W,H);
+  const L=34,R=10,T=12,B=22,pw=W-L-R,ph=H-T-B;
+  ctx.strokeStyle='rgba(51,72,82,.5)';ctx.lineWidth=1;ctx.font='9px IBM Plex Mono, monospace';ctx.fillStyle='#5f7880';
+  for(let i=0;i<=10;i++){const x=L+pw*i/10;ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ph);ctx.stroke();if(i%2===0)ctx.fillText(String(Math.round(anim.maxFrames*i/10)),x-8,H-8)}
+  ctx.beginPath();ctx.moveTo(L,T+ph/2);ctx.lineTo(L+pw,T+ph/2);ctx.stroke();
+  anim.kf.forEach(k=>{const x=L+pw*clamp(k.f/anim.maxFrames,0,1);ctx.save();ctx.strokeStyle='rgba(183,166,255,.45)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ph);ctx.stroke();ctx.restore()});
+  const defs=[{k:'zoom',c:'#ffb454'},{k:'angle',c:'#4fd8c0'},{k:'tx',c:'#ff6d5a'},{k:'ty',c:'#b7a6ff'}];
+  const N=200;
+  defs.forEach(d=>{
+    const s=aSeries[d.k];if(!s)return;
+    let mn=Infinity,mx=-Infinity;const pts=[];
+    for(let i=0;i<=N;i++){const f=anim.maxFrames*i/N;const v=valAt(s,f);pts.push(v);if(v<mn)mn=v;if(v>mx)mx=v}
+    if(mx-mn<1e-6){mx=mn+1}
+    ctx.strokeStyle=d.c;ctx.lineWidth=2;ctx.beginPath();
+    pts.forEach((v,i)=>{const x=L+pw*i/N;const y=T+ph*(1-(v-mn)/(mx-mn));i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+    ctx.stroke();
+    ctx.fillStyle=d.c;ctx.fillText(d.k,L+4,T+10+defs.indexOf(d)*11);
+  });
+}
+function bindAnim(){
+  $('#animMode').addEventListener('change',e=>{anim.mode=e.target.value;renderCmd()});
+  $('#maxFrames').addEventListener('input',e=>{anim.maxFrames=+e.target.value||300;renderCmd();drawCurves()});
+  $('#fps').addEventListener('input',e=>{anim.fps=+e.target.value||12;renderCmd()});
+  $('#spline').addEventListener('change',e=>{anim.spline=e.target.value;rebuildAnimSeries();renderCmd();drawCurves()});
+  $('#midas').addEventListener('change',e=>{anim.midas=e.target.checked;renderCmd()});
+  const map={s_angle:'angle',s_zoom:'zoom',s_tx:'tx',s_ty:'ty',s_tz:'tz',s_rx:'rx'};
+  for(const id in map){$('#'+id).addEventListener('input',e=>{anim.series[map[id]]=e.target.value;rebuildAnimSeries();renderCmd();drawCurves()})}
+  $('#copyAnim').addEventListener('click',()=>copyText(buildAnimDict()));
+}
+function renderKF(){
+  const list=$('#kfList');list.innerHTML='';
+  anim.kf.forEach((k,i)=>{
+    const el=document.createElement('div');el.className='kf';
+    el.innerHTML=`<div class="kh"><label>frame</label><input type="number" class="kf-f" value="${k.f}" min="0"><button class="del" title="eliminar">×</button></div><textarea class="kf-p" spellcheck="false">${k.p.replace(/</g,'&lt;')}</textarea><div class="wt"><label>peso --w</label><input type="range" class="kf-w" min="0" max="2" step="0.1" value="${k.w}"><span class="val" style="color:var(--amber);font-family:var(--mono);font-size:11px;min-width:30px">${k.w}</span></div>`;
+    el.querySelector('.kf-f').addEventListener('input',e=>{k.f=+e.target.value;renderCmd();drawCurves()});
+    el.querySelector('.kf-p').addEventListener('input',e=>{k.p=e.target.value;renderCmd()});
+    el.querySelector('.kf-w').addEventListener('input',e=>{k.w=+e.target.value;el.querySelector('.val').textContent=k.w;renderCmd()});
+    el.querySelector('.del').addEventListener('click',()=>{if(anim.kf.length>1){anim.kf.splice(i,1);renderKF();renderCmd();drawCurves()}});
+    list.appendChild(el);
+  });
+}
+$('#addKf').addEventListener('click',()=>{const last=anim.kf[anim.kf.length-1];anim.kf.push({f:(last?last.f+120:0),p:'nueva escena…',w:1});renderKF();renderCmd();drawCurves()});
+
+/* ---------- galería ---------- */
+const SAMPLES=[
+  {img:'https://image.qwenlm.ai/public_source/bcc23534-fd58-4939-90c1-489d99cd6853/1e7869847-2830-47e7-b0ee-12002b8a1385.png',meta:{prompt:'Un faro flotante sobre un mar de nubes al atardecer, óleo onírico',seed:48213,model:'flux',w:1024,h:1024,date:'muestra',src:'muestra'}},
+  {img:'https://image.qwenlm.ai/public_source/bcc23534-fd58-4939-90c1-489d99cd6853/14189b1e6-d746-436e-a6db-d3a680ae8f13.png',meta:{prompt:'Bosque bioluminiscente con setas de cristal, cian y magenta',seed:90771,model:'flux',w:1024,h:1024,date:'muestra',src:'muestra'}}
+];
+let gallery=[];
+function loadGallery(){try{const s=localStorage.getItem('dd_gallery_v2');gallery=s?JSON.parse(s):[]}catch(e){gallery=[]}}
+function persistGallery(){try{const keep=gallery.filter(g=>g.meta.src!=='muestra').slice(0,24);localStorage.setItem('dd_gallery_v2',JSON.stringify(keep))}catch(e){}}
+function renderGallery(){
+  const all=[...gallery,...SAMPLES];
+  $('#galBadge').textContent=all.length;
+  const grid=$('#galGrid');
+  if(!all.length){grid.innerHTML='<div class="empty">aún no hay obras · genera o sube imágenes</div>';return}
+  grid.innerHTML='';
+  all.forEach((it,i)=>{
+    const el=document.createElement('div');el.className='gitem';el.style.animationDelay=(i*0.03)+'s';
+    const hasPrompt=!!(it.meta&&it.meta.prompt);
+    el.innerHTML=`<span class="src">${it.meta.src||'gen'}</span><img loading="lazy" src="${it.img}" alt=""><div class="ov"><div class="meta"><em>${(it.meta.prompt||'').replace(/</g,'&lt;')}</em>semilla ${it.meta.seed??'—'} · ${it.meta.model||''} · ${it.meta.w||''}×${it.meta.h||''}</div><div class="acts"><button class="zoom" title="ampliar">⛶</button><button class="dl" title="descargar">⬇</button>${hasPrompt?'<button class="reuse" title="usar prompt">↺</button>':''}${it.meta.src==='muestra'?'':'<button class="del" title="eliminar">🗑</button>'}</div></div>`;
+    el.querySelector('.zoom').addEventListener('click',e=>{e.stopPropagation();openLB(it)});
+    el.querySelector('img').addEventListener('click',()=>openLB(it));
+    el.querySelector('.dl').addEventListener('click',e=>{e.stopPropagation();downloadURL(it.img,'disco_'+(it.meta.seed??'img')+'.png')});
+    const reuse=el.querySelector('.reuse');if(reuse)reuse.addEventListener('click',e=>{e.stopPropagation();$('#prompt').value=it.meta.prompt;readUI();updateTicker();switchTab('estudio');toast('Prompt cargado en el estudio')});
+    const del=el.querySelector('.del');if(del)del.addEventListener('click',e=>{e.stopPropagation();const idx=gallery.indexOf(it);if(idx>-1)gallery.splice(idx,1);persistGallery();renderGallery();toast('Obra eliminada')});
+    grid.appendChild(el);
+  });
+}
+function openLB(it){$('#lbImg').src=it.img;$('#lbCap').innerHTML='<em>'+(it.meta.prompt||'').replace(/</g,'&lt;')+'</em><br>semilla '+(it.meta.seed??'—')+' · '+(it.meta.model||'')+' · '+(it.meta.w||'')+'×'+(it.meta.h||'');$('#lb').classList.add('open');$('#lbDl').onclick=()=>downloadURL(it.img,'disco_'+(it.meta.seed??'img')+'.png')}
+$('#lbX').addEventListener('click',()=>$('#lb').classList.remove('open'));
+$('#lb').addEventListener('click',e=>{if(e.target.id==='lb')$('#lb').classList.remove('open')});
+$('#uploadBtn').addEventListener('click',()=>$('#uploadFile').click());
+$('#uploadFile').addEventListener('change',e=>{handleFiles(e.target.files);e.target.value=''});
+const drop=$('#drop');
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>handleFiles(e.dataTransfer.files));
+drop.addEventListener('click',()=>$('#uploadFile').click());
+function handleFiles(files){[...files].forEach(f=>{if(!f.type.startsWith('image/'))return;const r=new FileReader();r.onload=ev=>{const meta={prompt:f.name,seed:'—',model:'importada',w:'',h:'',date:new Date().toLocaleString('es-ES'),src:'import'};gallery.unshift({img:ev.target.result,meta});persistGallery();renderGallery()};r.readAsDataURL(f)});toast('Imágenes añadidas')}
+
+/* ---------- ambiente + estado real ---------- */
+const grainC=$('#grain'),gctx=grainC.getContext('2d');
+function grainTick(){const img=gctx.createImageData(160,90);const d=img.data;for(let i=0;i<d.length;i+=4){const v=Math.random()*255;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255}gctx.putImageData(img,0,0)}
+const ntC=$('#noiseTile'),ntctx=ntC.getContext('2d');
+function noiseTileTick(){const img=ntctx.createImageData(26,26);const d=img.data;for(let i=0;i<d.length;i+=4){const v=Math.random()*255;d[i]=d[i+1]=d[i+2]=v;d[i+3]=255}ntctx.putImageData(img,0,0)}
+setInterval(grainTick,120);setInterval(noiseTileTick,90);
+setInterval(()=>{$('#clock').textContent=new Date().toLocaleTimeString('es-ES')},1000);
+function pingEngine(){
+  const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),10000);
+  fetch('https://image.pollinations.ai/models',{signal:ctl.signal})
+    .then(r=>r.json())
+    .then(m=>{clearTimeout(to);const led=$('#ledEng');led.classList.add('ok');led.classList.remove('err');
+      const names=Array.isArray(m)?m.filter(x=>typeof x==='string').slice(0,4).join(' · '):'flux';
+      $('#engTxt').textContent='motor en línea · '+names;})
+    .catch(()=>{clearTimeout(to);const led=$('#ledEng');led.classList.add('err');led.classList.remove('ok');$('#engTxt').textContent='motor sin respuesta'});
+}
+const revObserver=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');revObserver.unobserve(en.target)}})},{threshold:0.08});
+
+function boot(){
+  bindInputs();bindAnim();
+  readUI();syncLabels();updateTicker();renderCmd();
+  rebuildAnimSeries();renderKF();drawCurves();
+  loadGallery();renderGallery();
+  $$('.reveal').forEach(el=>revObserver.observe(el));
+  pingEngine();setInterval(pingEngine,60000);
+}
+boot();
+</script>
+</body>
+</html>
