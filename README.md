@@ -1,1 +1,2 @@
-![Texto alternativo](assets/disco_168661034.png)
+
+![Mi imagen](assets/disco_168661034.png)
